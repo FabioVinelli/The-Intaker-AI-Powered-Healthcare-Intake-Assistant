@@ -1,0 +1,639 @@
+{
+  "version": "v1.0",
+  "script_name": "ASAM_Intake_Conversational_Script_v1.0",
+  "description": "Dynamic conversational intake script based on ASAM Criteria 4th Edition for adults.",
+  "scoring_weights": {
+    "description": "Global weighting schema for aggregating dimensional risk scores. D1 & D2 contribute to 'medical_risk'.",
+    "medical_risk_weight": 0.3,
+    "psychological_risk_weight": 0.3,
+    "substance_use_risk_weight": 0.2,
+    "recovery_environment_risk_weight": 0.15,
+    "barriers_risk_weight": 0.15
+  },
+  "level_of_care_determination": {
+    "description": "Pseudocode for recommending ASAM level of care based on overall aggregated risk score and co-occurring needs.",
+    "logic_pseudocode": [
+      "function determine_level_of_care(overall_risk_score, co_occurring_needs = false):",
+      "  if overall_risk_score >= 3.5:",
+      "    return co_occurring_needs ? 'Level 3.7 (Co-Occurring Enhanced Residential)' : 'Level 3.7 (Residential/Inpatient)'",
+      "  elif overall_risk_score >= 3.0:",
+      "    return co_occurring_needs ? 'Level 2.5 (Co-Occurring Enhanced Intensive Outpatient)' : 'Level 2.5 (High-Intensity Outpatient)'",
+      "  elif overall_risk_score >= 2.5:",
+      "    return co_occurring_needs ? 'Level 2.1 (Co-Occurring Enhanced Intensive Outpatient)' : 'Level 2.1 (Intensive Outpatient)'",
+      "  else:",
+      "    return 'Level 1.0 (Outpatient Therapy)'"
+    ],
+    "source_reference": "ASAM Criteria, 4th Edition; Document pages 4, 21, 44"
+  },
+  "escalation_protocols": {
+    "EP001_SUICIDAL_IDEATION": {
+      "dimension_id": "D3",
+      "trigger_description": "Patient endorses suicidal ideation or current intent/plan.",
+      "action": "IMMEDIATE_CLINICAL_ALERT: Pause bot. Notify on-call clinician. Initiate safety protocol. Log event.",
+      "next_step": "Clinician to take over assessment. Bot to await clinician override to resume or terminate."
+    },
+    "EP002_PSYCHOSIS": {
+      "dimension_id": "D3",
+      "trigger_description": "Patient reports symptoms indicative of active psychosis.",
+      "action": "IMMEDIATE_CLINICAL_ALERT: Pause bot. Notify on-call clinician. Initiate safety protocol. Log event.",
+      "next_step": "Clinician to assess for safety and need for urgent psychiatric evaluation."
+    },
+    "EP003_CRITICAL_WITHDRAWAL": {
+      "dimension_id": "D1",
+      "trigger_description": "Patient reports severe withdrawal symptoms (e.g., seizures, DTs, difficulty breathing, confusion) or has sought emergency care for withdrawal.",
+      "action": "IMMEDIATE_MEDICAL_ALERT: Pause bot. Notify medical staff/on-call clinician. Recommend immediate medical evaluation (possible ER). Log event.",
+      "next_step": "Medical staff to assess for emergent detox needs."
+    },
+    "EP004_CRITICAL_INTOXICATION": {
+      "dimension_id": "D1",
+      "trigger_description": "Patient presents with signs of critical intoxication (e.g., unresponsive, respiratory depression).",
+      "action": "IMMEDIATE_MEDICAL_ALERT: Pause bot. Notify medical staff/on-call clinician. Recommend immediate medical evaluation (possible ER). Log event.",
+      "next_step": "Medical staff to assess for emergent medical stabilization."
+    },
+    "EP005_CRITICAL_MEDICAL_CONDITION": {
+      "dimension_id": "D2",
+      "trigger_description": "Patient reports a critical, unstable medical condition requiring immediate attention.",
+      "action": "IMMEDIATE_MEDICAL_ALERT: Pause bot. Notify medical staff/on-call clinician. Log event.",
+      "next_step": "Medical staff to assess for urgent medical care needs."
+    },
+    "EP006_UNSAFE_HOUSING_IMMINENT_DANGER": {
+      "dimension_id": "D5",
+      "trigger_description": "Patient reports current living environment is unsafe with imminent danger (e.g., active violence).",
+      "action": "URGENT_SOCIAL_WORK_ALERT: Pause bot. Notify social worker/case manager. Log event.",
+      "next_step": "Staff to assess safety, explore emergency shelter/housing options."
+    },
+    "EP007_CHILD_ABUSE_NEGLECT_REPORT": {
+      "dimension_id": "D5",
+      "trigger_description": "Patient discloses information suggesting child abuse or neglect.",
+      "action": "MANDATED_REPORT_PROCEDURE: Pause bot. Notify designated facility reporter. Log event.",
+      "next_step": "Follow facility protocol for mandated reporting."
+    },
+    "EP008_ELDER_ABUSE_NEGLECT_REPORT": {
+      "dimension_id": "D5",
+      "trigger_description": "Patient discloses information suggesting elder abuse or neglect.",
+      "action": "MANDATED_REPORT_PROCEDURE: Pause bot. Notify designated facility reporter. Log event.",
+      "next_step": "Follow facility protocol for mandated reporting."
+    }
+  },
+  "dimension_1": {
+    "id": "D1",
+    "title": "Acute Intoxication and/or Withdrawal Potential",
+    "description": "Assesses current intoxication and likelihood of withdrawal, including severity and past history. Determines need for detoxification services.",
+    "questions": [
+      {
+        "id": "D1_Q1",
+        "text": "Have you used any alcohol or other drugs in the last 48-72 hours?",
+        "type": "yes_no",
+        "response_options": ["Yes", "No"],
+        "follow_up": {
+          "Yes": "D1_Q2",
+          "No": "D1_Q6"
+        },
+        "escalation_flag": false
+      },
+      {
+        "id": "D1_Q2",
+        "text": "What substances have you used in the last 48-72 hours? Please list them.",
+        "type": "text_multiline",
+        "variable_name": "recent_substances_used",
+        "follow_up": {
+          "next": "D1_Q3"
+        },
+        "escalation_flag": false
+      },
+      {
+        "id": "D1_Q3",
+        "text": "For each substance, when was your last use (date and time), how much did you use, and how did you use it (e.g., orally, smoked, injected)?",
+        "type": "text_multiline_structured",
+        "structure_prompt": "Substance: [Name], Last Use: [Date/Time], Amount: [Amount], Method: [Method]",
+        "variable_name": "substance_details",
+        "follow_up": {
+          "next": "D1_Q4"
+        },
+        "escalation_flag": false
+      },
+      {
+        "id": "D1_Q4",
+        "text": "Are you currently feeling any effects from recent substance use, or experiencing any signs of withdrawal?",
+        "type": "yes_no",
+        "response_options": ["Yes, intoxication effects", "Yes, withdrawal symptoms", "Both", "No"],
+        "variable_name": "current_effects_status",
+        "follow_up": {
+          "Yes, intoxication effects": "D1_Q5A",
+          "Yes, withdrawal symptoms": "D1_Q5B",
+          "Both": "D1_Q5A",
+          "No": "D1_Q6"
+        },
+        "escalation_flag": false
+      },
+      {
+        "id": "D1_Q5A",
+        "text": "Regarding intoxication: On a scale of 0 (none) to 10 (extreme), how intoxicated do you feel right now? Can you describe the symptoms (e.g., dizziness, slurred speech, impaired coordination)?",
+        "type": "text_scale_combo",
+        "scale_min": 0,
+        "scale_max": 10,
+        "variable_name": "intoxication_severity_self_report",
+        "follow_up": {
+          "next_conditional": {
+            "condition_variable": "current_effects_status",
+            "value_is": "Both",
+            "if_true": "D1_Q5B",
+            "if_false": "D1_Q6"
+          }
+        },
+        "escalation_flag": true,
+        "escalation_condition": "score >= 8 OR reports severe impairment",
+        "triggers_escalation": ["EP004_CRITICAL_INTOXICATION"]
+      },
+      {
+        "id": "D1_Q5B",
+        "text": "Regarding withdrawal: What withdrawal symptoms are you experiencing (e.g., shaking, sweating, nausea, anxiety, seizures, confusion, hallucinations)? When did they start?",
+        "type": "text_multiline_symptoms",
+        "symptom_checklist_type": "withdrawal_ciwa_simplified",
+        "variable_name": "withdrawal_symptoms_self_report",
+        "follow_up": {
+          "next": "D1_Q5C"
+        },
+        "escalation_flag": true,
+        "escalation_condition": "reports seizures, confusion, hallucinations, severe agitation, or has history of complicated withdrawal",
+        "triggers_escalation": ["EP003_CRITICAL_WITHDRAWAL"]
+      },
+      {
+        "id": "D1_Q5C",
+        "text": "Have you ever had severe withdrawal symptoms like seizures, delirium tremens (DTs), or hallucinations when stopping or cutting down on substance use?",
+        "type": "yes_no",
+        "variable_name": "history_severe_withdrawal",
+        "follow_up": {
+          "next": "D1_Q6"
+        },
+        "escalation_flag": true,
+        "escalation_condition": "response == 'Yes'",
+        "triggers_escalation": ["EP003_CRITICAL_WITHDRAWAL"]
+      },
+      {
+        "id": "D1_Q6",
+        "text": "Have you ever needed medical help or hospitalization for detoxification or withdrawal management?",
+        "type": "yes_no",
+        "variable_name": "history_medical_detox",
+        "follow_up": {
+          "next": "END_DIMENSION_1"
+        },
+        "escalation_flag": false
+      }
+    ],
+    "risk_scoring": {
+      "scale": "0 (No Risk) to 4 (Severe/Life-Threatening Risk)",
+      "logic_pseudocode": [
+        "intox_score = 0, withdrawal_score = 0",
+        "Based on D1_Q5A (intoxication_severity_self_report, observed signs):",
+        "  If critical (e.g., unresponsive, respiratory depression, severe impairment): intox_score = 4 (ESCALATE EP004)",
+        "  If severe (e.g., significant impairment but responsive): intox_score = 3",
+        "  If moderate (e.g., noticeable impairment): intox_score = 2",
+        "  If mild (e.g., slight effects): intox_score = 1",
+        "Based on D1_Q5B/D1_Q5C (withdrawal_symptoms_self_report, history_severe_withdrawal, observed signs):",
+        "  If critical (e.g., seizures, DTs, hallucinations, severe vital sign instability): withdrawal_score = 4 (ESCALATE EP003)",
+        "  If severe (e.g., pronounced symptoms, risk of complicated withdrawal): withdrawal_score = 3",
+        "  If moderate (e.g., uncomfortable but not life-threatening): withdrawal_score = 2",
+        "  If mild (e.g., minimal symptoms): withdrawal_score = 1",
+        "Dimension 1 Risk = MAX(intox_score, withdrawal_score)",
+        "If no recent use and no current withdrawal: Dimension 1 Risk = 0"
+      ],
+      "source_reference": "ASAM Criteria 4th Ed.; Document pages 2, 15, 16, 19, 27"
+    },
+    "escalation_triggers_linked": ["EP003_CRITICAL_WITHDRAWAL", "EP004_CRITICAL_INTOXICATION"],
+    "tags": ["detoxification_needed", "withdrawal_management", "intoxication_assessment", "medical_stabilization"]
+  },
+  "dimension_2": {
+    "id": "D2",
+    "title": "Biomedical Conditions and Complications",
+    "description": "Assesses current physical illnesses, chronic medical conditions, pregnancy, and physical disabilities.",
+    "questions": [
+      {
+        "id": "D2_Q1",
+        "text": "Do you have any current physical health problems or medical conditions (e.g., diabetes, heart disease, liver problems, chronic pain, infections like HIV or Hepatitis C)?",
+        "type": "yes_no_elaborate",
+        "elaboration_prompt_if_yes": "Please list them.",
+        "variable_name": "biomedical_conditions",
+        "follow_up": {
+          "Yes": "D2_Q2",
+          "No": "D2_Q4"
+        },
+        "escalation_flag": false
+      },
+      {
+        "id": "D2_Q2",
+        "text": "Are these conditions currently stable and being treated? Are you taking any prescribed medications for them?",
+        "type": "yes_no_elaborate",
+        "elaboration_prompt_if_yes": "Please describe your treatment and medications.",
+        "elaboration_prompt_if_no": "Please explain why not, or what the issues are.",
+        "variable_name": "biomedical_condition_treatment_status",
+        "follow_up": {
+          "next": "D2_Q3"
+        },
+        "escalation_flag": true,
+        "escalation_condition": "reports unstable critical condition",
+        "triggers_escalation": ["EP005_CRITICAL_MEDICAL_CONDITION"]
+      },
+      {
+        "id": "D2_Q3",
+        "text": "Do any of these medical conditions or their treatments complicate your substance use, or does your substance use complicate these medical conditions?",
+        "type": "yes_no_elaborate",
+        "elaboration_prompt_if_yes": "Please explain how.",
+        "variable_name": "biomedical_substance_interaction",
+        "follow_up": {
+          "next": "D2_Q4"
+        },
+        "escalation_flag": false
+      },
+      {
+        "id": "D2_Q4",
+        "text": "Are you currently pregnant, or is there a possibility you might be pregnant?",
+        "type": "yes_no",
+        "variable_name": "pregnancy_status",
+        "follow_up": {
+          "Yes": "D2_Q5",
+          "No": "D2_Q6"
+        },
+        "escalation_flag": false
+      },
+      {
+        "id": "D2_Q5",
+        "text": "If yes to pregnancy: Are you receiving prenatal care? Do you have any concerns related to your pregnancy and substance use?",
+        "type": "text_multiline",
+        "variable_name": "pregnancy_details",
+        "follow_up": {
+          "next": "D2_Q6"
+        },
+        "tags": ["prenatal_care_referral", "high_risk_pregnancy_screen"],
+        "escalation_flag": false
+      },
+      {
+        "id": "D2_Q6",
+        "text": "Do you have any physical disabilities or limitations that might affect your ability to participate in treatment or daily activities?",
+        "type": "yes_no_elaborate",
+        "elaboration_prompt_if_yes": "Please describe them.",
+        "variable_name": "physical_disabilities",
+        "follow_up": {
+          "next": "END_DIMENSION_2"
+        },
+        "escalation_flag": false
+      }
+    ],
+    "risk_scoring": {
+      "scale": "0 (No Risk) to 4 (Severe Risk)",
+      "logic_pseudocode": [
+        "medical_status = 'stable' (default)",
+        "If D2_Q1/D2_Q2 indicate critical, unstable medical condition requiring immediate medical attention (e.g., acute cardiac event, uncontrolled infection, severe organ failure): medical_status = 'critical', Risk = 4 (ESCALATE EP005)",
+        "Else if severe medical condition requiring ongoing medical monitoring/management, significantly impacting functioning or treatment (e.g., advanced liver disease, uncontrolled diabetes, symptomatic HIV): medical_status = 'severe', Risk = 3",
+        "Else if moderate medical condition, some impact on functioning or treatment, requires medical attention (e.g., stable chronic pain, controlled hypertension): medical_status = 'moderate', Risk = 2",
+        "Else if mild medical condition or well-managed, minimal impact: medical_status = 'mild', Risk = 1",
+        "If pregnant (D2_Q4 is Yes), assess risks related to pregnancy and substance use. If high-risk pregnancy due to SUD or co-occurring medical issues, increase risk score by 1 (max 4).",
+        "If no significant biomedical conditions: Risk = 0"
+      ],
+      "source_reference": "ASAM Criteria 4th Ed.; Document pages 2, 14, 15, 28"
+    },
+    "escalation_triggers_linked": ["EP005_CRITICAL_MEDICAL_CONDITION"],
+    "tags": ["medical_assessment", "chronic_condition_management", "infectious_disease_screening", "pregnancy_care", "pain_management"]
+  },
+  "dimension_3": {
+    "id": "D3",
+    "title": "Emotional, Behavioral, or Cognitive (EBC) Conditions and Complications",
+    "description": "Assesses psychiatric conditions, psychological history, trauma, cognitive functioning, and EBC conditions that may affect treatment.",
+    "questions": [
+      {
+        "id": "D3_Q1",
+        "text": "Have you ever been diagnosed with a mental health condition (e.g., depression, anxiety, bipolar disorder, schizophrenia, PTSD)? If so, what was the diagnosis and are you currently receiving treatment or medication for it?",
+        "type": "yes_no_elaborate",
+        "elaboration_prompt_if_yes": "Please describe the diagnosis, treatment, and medications.",
+        "variable_name": "mental_health_diagnosis_history",
+        "follow_up": {
+          "next": "D3_Q2"
+        },
+        "escalation_flag": false
+      },
+      {
+        "id": "D3_Q2",
+        "text": "In the past month, have you been persistently bothered by feeling down, depressed, or hopeless? Or by having little interest or pleasure in doing things?",
+        "type": "yes_no",
+        "variable_name": "phq2_depression_q1_q2",
+        "follow_up": {
+          "next": "D3_Q3"
+        },
+        "escalation_flag": false
+      },
+      {
+        "id": "D3_Q3",
+        "text": "In the past month, have you had thoughts that you would be better off dead, or of hurting yourself in some way?",
+        "type": "yes_no",
+        "variable_name": "suicidal_ideation_screen",
+        "follow_up": {
+          "Yes": "D3_Q3A",
+          "No": "D3_Q4"
+        },
+        "escalation_flag": true,
+        "escalation_condition": "response == 'Yes'",
+        "triggers_escalation": ["EP001_SUICIDAL_IDEATION"]
+      },
+      {
+        "id": "D3_Q3A",
+        "text": "If yes to thoughts of self-harm: Are you having these thoughts right now? Have you made any plans? Have you ever attempted suicide?",
+        "type": "text_multiline_safety",
+        "variable_name": "suicidal_ideation_details",
+        "follow_up": {
+          "next": "D3_Q4"
+        },
+        "escalation_flag": true,
+        "escalation_condition": "reports current intent, plan, or recent attempt",
+        "triggers_escalation": ["EP001_SUICIDAL_IDEATION"]
+      },
+      {
+        "id": "D3_Q4",
+        "text": "Have you ever experienced or witnessed a traumatic event that still affects you significantly (e.g., abuse, combat, serious accident, natural disaster)?",
+        "type": "yes_no_elaborate",
+        "elaboration_prompt_if_yes": "Can you briefly describe how it affects you (e.g., nightmares, flashbacks, avoidance)?",
+        "variable_name": "trauma_history_screen",
+        "follow_up": {
+          "next": "D3_Q5"
+        },
+        "escalation_flag": false
+      },
+      {
+        "id": "D3_Q5",
+        "text": "Do you ever hear voices or see things that others don't, or have strong beliefs that others might find unusual?",
+        "type": "yes_no",
+        "variable_name": "psychosis_screen",
+        "follow_up": {
+          "Yes": "D3_Q5A",
+          "No": "D3_Q6"
+        },
+        "escalation_flag": true,
+        "escalation_condition": "response == 'Yes'",
+        "triggers_escalation": ["EP002_PSYCHOSIS"]
+      },
+      {
+        "id": "D3_Q5A",
+        "text": "If yes to psychosis screen: Can you tell me more about these experiences? Are they distressing or do they affect your daily life?",
+        "type": "text_multiline",
+        "variable_name": "psychosis_details",
+        "follow_up": {
+          "next": "D3_Q6"
+        },
+        "escalation_flag": true,
+        "escalation_condition": "reports active, distressing psychotic symptoms",
+        "triggers_escalation": ["EP002_PSYCHOSIS"]
+      },
+      {
+        "id": "D3_Q6",
+        "text": "Do you have any difficulties with memory, concentration, problem-solving, or learning that might impact your ability to engage in treatment?",
+        "type": "yes_no_elaborate",
+        "elaboration_prompt_if_yes": "Please describe these difficulties.",
+        "variable_name": "cognitive_functioning_screen",
+        "follow_up": {
+          "next": "END_DIMENSION_3"
+        },
+        "escalation_flag": false
+      }
+    ],
+    "risk_scoring": {
+      "scale": "0 (No Risk) to 4 (Severe Risk)",
+      "logic_pseudocode": [
+        "psych_symptoms = patient_data.get('psychiatric_symptoms', []) // derived from questions",
+        "If 'active_suicidal_ideation_with_plan_intent' in psych_symptoms OR 'active_psychosis_with_impaired_judgment_danger' in psych_symptoms: Risk = 4 (ESCALATE EP001/EP002)",
+        "Else if 'severe_depression_anxiety_ptsd_impairing_function' in psych_symptoms OR 'intermittent_suicidal_ideation_no_plan' in psych_symptoms: Risk = 3",
+        "Else if 'moderate_ebc_symptoms_manageable_with_support' in psych_symptoms: Risk = 2",
+        "Else if 'mild_ebc_symptoms_minimal_impact' in psych_symptoms: Risk = 1",
+        "If significant cognitive impairment (D3_Q6) limiting ability to understand/participate, increase risk by 1 (max 4).",
+        "If no significant EBC conditions: Risk = 0"
+      ],
+      "source_reference": "ASAM Criteria 4th Ed.; Document pages 2, 15, 20, 28, 45"
+    },
+    "escalation_triggers_linked": ["EP001_SUICIDAL_IDEATION", "EP002_PSYCHOSIS"],
+    "tags": ["mental_health_assessment", "psychiatric_referral", "trauma_informed_care", "suicide_risk_assessment", "cognitive_screening"]
+  },
+  "dimension_4": {
+    "id": "D4",
+    "title": "Readiness to Change",
+    "description": "Assesses the patient's awareness of their substance use problem and their motivation and readiness to change their behavior.",
+    "questions": [
+      {
+        "id": "D4_Q1",
+        "text": "What concerns you, if any, about your substance use? What makes you consider making a change at this time?",
+        "type": "text_multiline",
+        "variable_name": "patient_concerns_motivation",
+        "follow_up": {
+          "next": "D4_Q2"
+        },
+        "escalation_flag": false
+      },
+      {
+        "id": "D4_Q2",
+        "text": "On a scale of 0 (Not at all important) to 10 (Extremely important), how important is it for you to make changes to your substance use right now?",
+        "type": "scale_0_10",
+        "variable_name": "change_importance_score",
+        "follow_up": {
+          "next": "D4_Q3"
+        },
+        "escalation_flag": false
+      },
+      {
+        "id": "D4_Q3",
+        "text": "On a scale of 0 (Not at all confident) to 10 (Extremely confident), how confident are you that you could succeed in making these changes if you decided to?",
+        "type": "scale_0_10",
+        "variable_name": "change_confidence_score",
+        "follow_up": {
+          "next": "D4_Q4"
+        },
+        "escalation_flag": false
+      },
+      {
+        "id": "D4_Q4",
+        "text": "What steps, if any, have you already taken to change your substance use?",
+        "type": "text_multiline",
+        "variable_name": "past_change_attempts",
+        "follow_up": {
+          "next": "D4_Q5"
+        },
+        "escalation_flag": false
+      },
+      {
+        "id": "D4_Q5",
+        "text": "Are you currently engaging in any risky behaviors related to your substance use (e.g., driving under the influence, sharing needles, unprotected sex)?",
+        "type": "yes_no_elaborate",
+        "elaboration_prompt_if_yes": "Please describe these behaviors.",
+        "variable_name": "risky_behaviors_substance_use",
+        "follow_up": {
+          "next": "END_DIMENSION_4"
+        },
+        "escalation_flag": false
+      }
+    ],
+    "risk_scoring": {
+      "scale": "0 (High Readiness/Low Risk) to 4 (Low Readiness/High Risk)",
+      "logic_pseudocode": [
+        "readiness_stage = 'precontemplation' (default)",
+        "If D4_Q1 indicates awareness of problem AND D4_Q2 (importance) > 7 AND D4_Q3 (confidence) > 7 AND D4_Q4 shows active steps: readiness_stage = 'action/maintenance', Risk = 0-1",
+        "Else if D4_Q1 indicates awareness and some desire to change, D4_Q2 > 5: readiness_stage = 'contemplation/preparation', Risk = 1-2",
+        "Else if D4_Q1 shows little awareness or resistance to change, D4_Q2 < 5: readiness_stage = 'precontemplation', Risk = 3-4",
+        "If D4_Q5 indicates current high-risk behaviors, increase risk score by 1 (max 4), regardless of readiness stage.",
+        "Interpret scores inversely for risk: High readiness = Low risk (0-1), Low readiness = High risk (3-4)."
+      ],
+      "source_reference": "ASAM Criteria 4th Ed.; Document pages 2-3, 15, 20, 29"
+    },
+    "escalation_triggers_linked": [],
+    "tags": ["motivational_interviewing", "stages_of_change", "readiness_assessment", "harm_reduction_education"]
+  },
+  "dimension_5": {
+    "id": "D5",
+    "title": "Relapse, Continued Use, or Continued Problem Potential (Recovery Environment)",
+    "description": "Assesses the patient's living environment, social support system, and other factors that may support or hinder their recovery.",
+    "questions": [
+      {
+        "id": "D5_Q1",
+        "text": "Where are you currently living? Who lives there with you?",
+        "type": "text_multiline",
+        "variable_name": "living_situation_description",
+        "follow_up": {
+          "next": "D5_Q2"
+        },
+        "escalation_flag": false
+      },
+      {
+        "id": "D5_Q2",
+        "text": "Do you feel safe in your current living environment? Are there any people, places, or things in your environment that might make it difficult for you to avoid substance use or trigger relapse?",
+        "type": "yes_no_elaborate",
+        "elaboration_prompt_if_yes": "Please explain the safety concerns or triggers.",
+        "elaboration_prompt_if_no": "What makes it feel safe/supportive?",
+        "variable_name": "environment_safety_triggers",
+        "follow_up": {
+          "next": "D5_Q3"
+        },
+        "escalation_flag": true,
+        "escalation_condition": "reports unsafe environment with imminent danger",
+        "triggers_escalation": ["EP006_UNSAFE_HOUSING_IMMINENT_DANGER"]
+      },
+      {
+        "id": "D5_Q3",
+        "text": "Do you have supportive family members, friends, or others in your life who encourage your recovery? Who can you turn to for help?",
+        "type": "yes_no_elaborate",
+        "elaboration_prompt_if_yes": "Please describe your support system.",
+        "elaboration_prompt_if_no": "What challenges do you face in getting support?",
+        "variable_name": "social_support_system",
+        "follow_up": {
+          "next": "D5_Q4"
+        },
+        "escalation_flag": false
+      },
+      {
+        "id": "D5_Q4",
+        "text": "Are you currently employed, in school, or involved in other structured activities? Do these activities support your recovery?",
+        "type": "yes_no_elaborate",
+        "elaboration_prompt_if_yes": "Please describe them.",
+        "variable_name": "employment_school_activities",
+        "follow_up": {
+          "next": "D5_Q5"
+        },
+        "escalation_flag": false
+      },
+      {
+        "id": "D5_Q5",
+        "text": "Are there any legal issues, financial problems, or other stressors in your life that might affect your recovery?",
+        "type": "yes_no_elaborate",
+        "elaboration_prompt_if_yes": "Please describe them.",
+        "variable_name": "life_stressors_recovery",
+        "follow_up": {
+          "next": "END_DIMENSION_5"
+        },
+        "escalation_flag": false
+      }
+    ],
+    "risk_scoring": {
+      "scale": "0 (Low Risk/Supportive Environment) to 4 (High Risk/Hostile Environment)",
+      "logic_pseudocode": [
+        "environmental_safety = patient_data.get('environmental_safety', 'safe') // from D5_Q2",
+        "social_support = patient_data.get('social_support', 'high') // from D5_Q3",
+        "If environmental_safety == 'unsafe_imminent_danger' OR (environmental_safety == 'unsafe' AND social_support == 'low_none'): Risk = 4 (ESCALATE EP006)",
+        "Else if (environmental_safety == 'unsafe' OR social_support == 'low_none') OR significant stressors (D5_Q5) with limited coping: Risk = 3",
+        "Else if environmental_safety == 'moderate_triggers_present' OR social_support == 'moderate_limited': Risk = 2",
+        "Else if environmental_safety == 'safe_supportive' AND social_support == 'high_strong': Risk = 0-1"
+      ],
+      "source_reference": "ASAM Criteria 4th Ed.; Document pages 1, 3, 15, 20, 29, 45"
+    },
+    "escalation_triggers_linked": ["EP006_UNSAFE_HOUSING_IMMINENT_DANGER", "EP007_CHILD_ABUSE_NEGLECT_REPORT", "EP008_ELDER_ABUSE_NEGLECT_REPORT"],
+    "tags": ["recovery_environment_assessment", "social_support_planning", "housing_assistance", "relapse_prevention_planning", "stress_management"]
+  },
+  "dimension_6": {
+    "id": "D6",
+    "title": "Person-Centered Considerations (Barriers and Preferences)",
+    "description": "Assesses patient preferences, cultural factors, strengths, resources, and barriers that may impact treatment access and engagement.",
+    "questions": [
+      {
+        "id": "D6_Q1",
+        "text": "What are your personal goals for treatment and recovery? What does a successful outcome look like to you?",
+        "type": "text_multiline",
+        "variable_name": "patient_treatment_goals",
+        "follow_up": {
+          "next": "D6_Q2"
+        },
+        "escalation_flag": false
+      },
+      {
+        "id": "D6_Q2",
+        "text": "Are there any cultural, religious, or spiritual beliefs or practices that are important to you and should be considered in your treatment plan?",
+        "type": "yes_no_elaborate",
+        "elaboration_prompt_if_yes": "Please describe them.",
+        "variable_name": "cultural_spiritual_factors",
+        "follow_up": {
+          "next": "D6_Q3"
+        },
+        "escalation_flag": false
+      },
+      {
+        "id": "D6_Q3",
+        "text": "Do you have any preferences regarding the type of treatment setting (e.g., inpatient, outpatient, individual, group therapy) or treatment approaches?",
+        "type": "text_multiline",
+        "variable_name": "treatment_preferences",
+        "follow_up": {
+          "next": "D6_Q4"
+        },
+        "escalation_flag": false
+      },
+      {
+        "id": "D6_Q4",
+        "text": "Are there any barriers that might make it difficult for you to access or participate in treatment, such as transportation, childcare, cost, work schedule, or language difficulties?",
+        "type": "yes_no_elaborate",
+        "elaboration_prompt_if_yes": "Please list any barriers you anticipate.",
+        "variable_name": "treatment_barriers",
+        "follow_up": {
+          "next": "D6_Q5"
+        },
+        "escalation_flag": false
+      },
+      {
+        "id": "D6_Q5",
+        "text": "What personal strengths, skills, or resources do you have that could help you in your recovery journey?",
+        "type": "text_multiline",
+        "variable_name": "patient_strengths_resources",
+        "follow_up": {
+          "next": "END_DIMENSION_6"
+        },
+        "escalation_flag": false
+      }
+    ],
+    "risk_scoring": {
+      "scale": "0 (Low Barriers/High Resources) to 4 (High Barriers/Low Resources)",
+      "logic_pseudocode": [
+        "barriers = patient_data.get('barriers', []) // from D6_Q4, e.g., ['transportation', 'financial', 'language']",
+        "risk_score = 0",
+        "If 'financial_barrier_prevents_access' in barriers OR 'language_barrier_no_services' in barriers OR 'lack_of_childcare_prevents_access' in barriers: risk_score = 4",
+        "Else if multiple significant barriers exist (e.g., transportation AND work_schedule): risk_score = 3",
+        "Else if some manageable barriers exist: risk_score = 2",
+        "Else if few or no significant barriers, and patient preferences (D6_Q3) align with available services: risk_score = 1",
+        "If strong personal strengths/resources (D6_Q5) and clear goals (D6_Q1) are identified, this can mitigate risk but doesn't lower it below 1 if barriers are present.",
+        "If no barriers and preferences align, and strong resources: risk_score = 0."
+      ],
+      "source_reference": "ASAM Criteria 4th Ed.; Document pages 3, 15, 30, 38-42"
+    },
+    "escalation_triggers_linked": [],
+    "tags": ["person_centered_planning", "cultural_considerations", "barrier_reduction", "strengths_based_approach", "treatment_engagement"]
+  }
+}

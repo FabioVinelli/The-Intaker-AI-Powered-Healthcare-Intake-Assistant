@@ -1,0 +1,197 @@
+﻿Product Requirements Document (PRD) for "The Intaker"[a]
+Document Version: 1.0 (Ready for Final Approval)
+Date: June 3, 2025
+Product Manager: Fabio Vinelli
+Lead Developer: Fabio Vinelli
+
+Company : Highland Health HUb ( Highland Recovery LLC.) 
+________________
+
+
+1. Introduction
+"The Intaker" is a modular, web-based (and desktop-capable via Electron) conversational intake assistant designed to automate patient/client intake in sensitive healthcare environments (e.g., Substance Use Disorder, Mental Health, General Medicine). It leverages structured clinical scripting and a Retrieval-Augmented Generation (RAG) system to provide dynamic, compliant, and highly adaptable intake workflows. Built exclusively on Google Cloud Platform (GCP) with HIPAA compliance as its foundational principle, "The Intaker" prioritizes a rapid, error-free development cycle and efficient, automated deployments.
+2. Goals
+* Automate & Standardize Patient Intake: Streamline current manual intake processes using clinical logic, risk scoring, and automated escalation protocols.
+* Enhance Patient Accessibility & Experience: Provide a guided, intuitive, and accessible intake experience via chat and voice, reducing friction for patients.
+* Ensure Regulatory Compliance: Strictly adhere to HIPAA and other relevant healthcare data privacy and security regulations across all operations and data handling.
+* Maximize Adaptability & Scalability: Design a system easily reconfigurable for diverse medical specialties and capable of scaling to meet high demand.
+* Optimize Development & Deployment: Leverage Google Cloud's integrated tooling for a fast, efficient, and reliable path from development to production.
+3. Target Audience
+* Patients/Clients: Individuals seeking medical intake services, desiring a convenient, private, and guided assessment experience.
+* Admins/Clinicians: Healthcare staff responsible for managing intake protocols, reviewing patient data, and overseeing chatbot performance and compliance.
+________________
+
+
+4. Core Features & Functionality (Task Master-Ready Development Blueprint)
+This section details the features of "The Intaker," breaking them down into actionable tasks and subtasks for your Task Master, explicitly linking them to Google Cloud services and highlighting development considerations. Each item is a deployable unit of work.
+Phase 0: Google Cloud Pre-configuration (Pre-Coding Setup)
+* Description: Essential foundational setup in GCP before any code development begins in Cursor AI IDE.
+* Task Master Entry: P0: GCP Foundation & Environment Setup
+   * P0.1: Create GCP Project & Enable Billing
+      * Deliverable: New GCP project created with billing enabled.
+      * Tooling: GCP Console.
+   * P0.2: Enable Required GCP APIs
+      * Description: Enable Vertex AI, Firestore, Cloud Storage, Firebase Auth, Cloud Functions, Cloud Run, Cloud Build, Cloud Logging, Cloud Source Repositories APIs.
+      * Deliverable: All necessary APIs enabled in the GCP Project.
+      * Tooling: GCP Console, gcloud CLI (potentially assisted by Terminal AI assistant).
+   * P0.3: Configure IAM Policies & Service Accounts
+      * Description: Set up least-privilege IAM roles for the-intaker-admin, the-intaker-patient, and service accounts for backend (Cloud Functions/Run) and CI/CD (Cloud Build).
+      * Deliverable: IAM roles and service accounts configured.
+      * Tooling: GCP Console, gcloud CLI (IaC with Terraform/Deployment Manager recommended for production).
+   * P0.4: Create Cloud Storage Buckets
+      * Description: Provision admin-docs (for clinical RAG sources) and patient-docs (for patient uploads) buckets.
+      * Deliverable: Two dedicated GCS buckets created with appropriate permissions.
+      * Tooling: GCP Console, gcloud CLI.
+   * P0.5: Set Up Firebase Project & Authentication
+      * Description: Link GCP project to Firebase, enable Firebase Authentication (Email/Password, Google Sign-in).
+      * Deliverable: Firebase project initialized, Auth enabled.
+      * Tooling: Firebase Console.
+   * P0.6: Initialize Cloud Firestore (Native Mode)
+      * Description: Create Firestore database in Native Mode. Draft initial Firestore Security Rules (e.g., for user access, sessions, intake_scripts).
+      * Deliverable: Firestore database initialized, basic security rules drafted.
+      * Tooling: Firebase Console, Firestore Security Rules editor.
+Phase 1: Core Backend & Data Management (Approx. 12 Days)
+* Goal: Establish the secure API layer, manage file uploads, and handle session state.
+* Google Cloud Services: Cloud Functions / Cloud Run, Firebase Authentication, Cloud Storage, Firestore, Cloud Logging.
+* Task Master Entry: P1: Backend Core & Data Management
+   * P1.1: Develop Secure API Layer
+      * P1.1.1: Implement Authentication Middleware: Integrate Firebase Auth SDK to verify user tokens for all protected API endpoints.
+         * Deliverable: Backend middleware function for authentication.
+      * P1.1.2: Implement File Upload Endpoints: Create dedicated Cloud Functions/Run endpoints (/upload/admin, /upload/patient) for secure file uploads to respective Cloud Storage buckets (admin-docs, patient-docs). Include validation.
+         * Deliverable: Deployed uploadAdminFile and uploadPatientFile Cloud Functions/Run services.
+      * P1.1.3: Implement Gemini Chat Proxy Endpoint: Create a secure backend endpoint (/chat) that mediates all communication with Gemini API. It receives prompts from the frontend and securely calls the Gemini API (never directly from frontend).
+         * Deliverable: Deployed chatProxy Cloud Function/Run service.
+      * P1.1.4: Implement Session Management Endpoints: Create APIs to store and retrieve patient intake session state (chat history, current script position, linked file references) in Cloud Firestore.
+         * Deliverable: Deployed getSession, updateSession Cloud Functions/Run services.
+      * P1.1.5: Integrate Audit Logging: Ensure all critical actions (uploads, API calls, escalations) are logged with user/session IDs to Cloud Logging.
+         * Deliverable: Standardized logging implemented across all backend services.
+   * P1.2: Develop RAG Document Processing Logic
+      * P1.2.1: Configure GCS Triggers for Document Ingestion: Set up Cloud Functions to trigger when new documents arrive in admin-docs or patient-docs buckets.
+         * Deliverable: Deployed processDocument Cloud Function configured with GCS triggers.
+      * P1.2.2: Implement Gemini Files API Integration: Within the triggered function, use Gemini Files API to upload the document for grounding and store the returned file_id in Firestore (linked to the original document in GCS).
+         * Deliverable: Document ingestion pipeline active; file_ids stored in Firestore.
+   * P1.3: Implement Script Management Logic
+      * P1.3.1: Design Firestore Schema for Intake Scripts: Define the structure for storing JSON-defined intake scripts in Cloud Firestore (e.g., intake_scripts collection with versions).
+         * Deliverable: Documented Firestore schema for scripts.
+      * P1.3.2: Implement Script Management Endpoints: APIs for admins to create, retrieve, update, and publish new versions of intake scripts.
+         * Deliverable: Deployed manageScript Cloud Functions/Run services.
+Phase 2: Frontend Implementation (Approx. 15 Days)
+* Goal: Develop intuitive user interfaces for patient and admin interactions.
+* Google Cloud Services: Firebase Hosting, Firebase Authentication.
+* Task Master Entry: P2: Frontend Implementation
+   * P2.1: Develop Patient Portal (Web)
+      * P2.1.1: Authentication UI: Implement secure login/signup using Firebase SDK for web.
+         * Deliverable: Working login/signup flow.
+      * P2.1.2: Core Chat Interface: Build the conversational UI, sending user input to backend /chat endpoint and displaying responses.
+         * Deliverable: Basic chat interface.
+      * P2.1.3: File Upload UI: Integrate UI component for patients to securely upload documents via backend /upload/patient endpoint.
+         * Deliverable: Functional patient file upload.
+      * P2.1.4: Voice Input/Output Integration: Implement real-time speech-to-text and text-to-speech using Gemini Live API via backend proxy.
+         * Deliverable: Functional voice interaction.
+      * P2.1.5: Session Persistence UI: Allow users to resume incomplete sessions, fetching state from Firestore.
+         * Deliverable: "Resume Session" functionality.
+   * P2.2: Develop Admin Portal (Web)
+      * P2.2.1: Script/Protocol Upload UI: Interface for admins to upload new clinical RAG documents to Cloud Storage via backend /upload/admin endpoint.
+         * Deliverable: Functional admin document upload.
+      * P2.2.2: Intake Script Editor/Viewer UI: UI for admins to view, edit, and publish JSON intake scripts stored in Firestore.
+         * Deliverable: Basic script editor/viewer.
+      * P2.2.3: Session & User Management Dashboard (Basic): A read-only dashboard for admins to monitor active sessions and view basic audit logs from Cloud Logging.
+         * Deliverable: Basic admin dashboard.
+Phase 3: Gemini AI & Core Logic Integration (Approx. 10 Days)
+* Goal: Integrate and refine Gemini's AI capabilities for conversational flow and RAG.
+* Google Cloud Services: Gemini API, Gemini Files API, Firestore.
+* Task Master Entry: P3: Gemini AI & Core Logic Integration
+   * P3.1: Implement Script-Driven Conversation Logic
+      * P3.1.1: Backend Logic for Conditional Branching: Implement robust conditional logic based on JSON scripts, dynamically modifying conversation flow.
+         * Deliverable: Dynamic script execution in backend.
+      * P3.1.2: Dynamic Question Generation/Refinement: Leverage Gemini API within the backend to generate follow-up questions or rephrase based on user input and script context.
+         * Deliverable: AI-enhanced dynamic questioning.
+   * P3.2: Implement Session-Specific RAG (Patient Layer)
+      * P3.2.1: Contextual Grounding for Patient Sessions: Backend logic to retrieve relevant Gemini File IDs (from Firestore) for the current patient's uploaded documents and pass them as grounding_documents in Gemini API calls.
+         * Deliverable: Patient-specific RAG active for conversations.
+      * P3.2.2: Key Detail Extraction from Patient Docs: Use Gemini's capabilities to extract structured data (e.g., medication names, allergies, insurance provider) from patient-uploaded documents.
+         * Deliverable: Basic data extraction from patient documents.
+Phase 4: Compliance, Security & Audit (Approx. 5 Days)
+* Goal: Rigorously verify and implement all HIPAA and security requirements.
+* Google Cloud Services: Cloud Storage, Firestore, IAM, Cloud Logging, Secret Manager.
+* Task Master Entry: P4: Compliance, Security & Audit Hardening
+   * P4.1: Data Encryption Validation: Confirm data encryption at rest (GCS, Firestore defaults) and in transit (HTTPS on all APIs).
+      * Deliverable: Encryption validation report.
+   * P4.2: IAM Policy Finalization: Conduct thorough review and refine all IAM roles and service account permissions to absolute least privilege.
+      * Deliverable: Finalized, production-ready IAM policies.
+   * P4.3: Audit Log Verification: Verify that Cloud Logging captures all necessary HIPAA-relevant audit trails (data access, modifications, API calls, user actions).
+      * Deliverable: Audit log completeness report.
+   * P4.4: Consent Mechanism Integration: Implement a clear, auditable e-signature or explicit consent mechanism in the patient portal before any PHI is collected.
+      * Deliverable: Functional consent capture.
+   * P4.5: Data Minimization & Retention Policy: Implement logic for automatic data purging or archival based on defined retention policies.
+      * Deliverable: Data retention logic implemented.
+   * P4.6: Secure Secrets Management: Migrate all sensitive credentials (e.g., API keys) to Google Cloud Secret Manager.
+      * Deliverable: All secrets managed via Secret Manager.
+Phase 5: Testing, Optimization & Deployment (Approx. 10 Days)
+* Goal: Ensure code quality, performance, and automated, error-free deployment.
+* Google Cloud Services: Cloud Build, Cloud Source Repositories, Cloud Monitoring, Cloud Logging.
+* Task Master Entry: P5: Testing, Optimization & CI/CD
+   * P5.1: Unit & Integration Testing (Development Focus):
+      * Description: Write and implement unit tests for all functions/components and integration tests for backend service interactions (mocking external services like Gemini).
+      * Deliverable: Comprehensive test suite with high code coverage.
+      * Tooling: Pytest/Jest, Cursor AI IDE (for test generation/debugging).
+   * P5.2: Set Up CI/CD Pipeline:
+      * Description: Configure cloudbuild.yaml files in Cloud Source Repositories to automate:
+         * Running all tests on every push.
+         * Building and deploying Cloud Functions/Run services.
+         * Building and deploying the frontend to Firebase Hosting.
+      * Deliverable: Automated CI/CD pipeline for backend and frontend.
+      * Tooling: Cloud Build, gcloud CLI (assisted by Terminal AI assistant for IaC/deployment scripts).
+   * P5.3: Performance & Load Testing (Initial):
+      * Description: Conduct basic load tests on backend APIs to identify initial bottlenecks. Monitor using Cloud Monitoring.
+      * Deliverable: Performance baseline report.
+   * P5.4: Security & Compliance Code Review: Perform final code review focusing on security best practices and compliance.
+      * Deliverable: Security review checklist completed.
+Phase 6: Pre-Production Polishing & Live Validation (Dedicated, Iterative Phase - Not included in initial 55 days for coding)
+* Goal: Rigorous, real-world validation of intake scripts and overall system performance in a production-like environment.
+* Google Cloud Services: All services in a dedicated staging GCP project (identical to production via IaC).
+* Task Master Entry: P6: Pre-Production Polishing & Live Validation
+   * P6.1: Deploy to Staging Environment: Deploy the fully tested application to a dedicated, HIPAA-compliant staging GCP project.
+      * Deliverable: "The Intaker" running in staging.
+      * Tooling: Cloud Build (using IaC for environment provisioning).
+   * P6.2: Comprehensive Intake Script Validation:
+      * Description: Conduct exhaustive, iterative testing of all intake script branches, conditional logic, risk scoring, and escalation protocols using diverse, de-identified synthetic PHI (or controlled, consented real PHI if compliant).
+      * Deliverable: Validated, polished intake scripts; identified edge cases.
+   * P6.3: Live RAG Accuracy Validation:
+      * Description: Verify Gemini's grounding accuracy for both clinical protocols and patient-uploaded documents in realistic intake scenarios within staging.
+      * Deliverable: Confirmed RAG accuracy.
+   * P6.4: Voice Interaction Quality Audit: Test speech-to-text accuracy and text-to-speech naturalness with a diverse set of inputs and accents.
+      * Deliverable: Optimized voice experience.
+   * P6.5: End-to-End Security & Compliance Audit:
+      * Description: External penetration testing, vulnerability scanning, and deep audit of all Cloud Logging trails, IAM permissions, and data flow in the staging environment.
+      * Deliverable: Compliance audit report.
+   * P6.6: Production Load Testing: Simulate anticipated production traffic to confirm system scalability and responsiveness under stress.
+      * Deliverable: Load test report; identified scaling needs.
+   * P6.7: User Acceptance Testing (UAT): Engage clinicians/patients (with appropriate de-identification/consent) to gather feedback on usability and clinical relevance.
+      * Deliverable: UAT feedback & refinement plan.
+________________
+
+
+5. Non-Functional Requirements (Reiterated)
+* Performance: Achieve low latency for conversational interactions (especially voice), rapid document processing, and quick RAG retrieval.
+* Security: Fully HIPAA-compliant architecture, robust authentication, granular authorization, and end-to-end data encryption. Proactive security monitoring.
+* Scalability: Dynamically scale to handle increasing numbers of concurrent users and data volumes without manual intervention.
+* Reliability: High availability for all services, with built-in redundancy and automated failover.
+* Maintainability: Modular, well-documented codebase; easy updates for scripts and RAG sources.
+* User Experience (UX): Intuitive, accessible, and empathetic for patients; efficient, clear, and auditable for clinicians.
+________________
+
+
+6. Future Considerations (Post-MVP)
+* EHR Integration: Direct, bi-directional integration with Electronic Health Record (EHR) systems for automated data transfer and record updates.
+* Advanced Risk Scoring: Integration of machine learning models for more sophisticated, adaptive risk assessment based on intake data patterns.
+* Multi-language Support: Expansion of conversational capabilities to support multiple languages and regional dialects.
+* Advanced Analytics & Reporting: Comprehensive dashboards for intake trends, completion rates, clinical insights, and compliance metrics.
+________________
+
+
+This refined PRD provides a detailed blueprint for "The Intaker." It's designed to be your primary reference in Task Master, guiding your development within Cursor AI IDE, and leveraging Google Cloud's integrated ecosystem for a robust, error-free, and production-ready application.
+Please review this polished PRD. I'm ready for your final approval.
+
+
+[a]Alright, let's put it all together into a comprehensive and actionable Product Requirements Document (PRD) for "The Intaker." This document will serve as your guiding blueprint, structured to integrate seamlessly with your Task Master workflow and leverage your Cursor AI IDE, while keeping your Google-only production team and efficient development goals in mind.

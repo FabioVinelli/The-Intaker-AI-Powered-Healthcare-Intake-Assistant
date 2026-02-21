@@ -1,0 +1,60 @@
+{
+  "name": "the-intaker-security-rules",
+  "version": "1.0.0",
+  "description": "HIPAA-compliant Firestore Security Rules for The Intaker project",
+  "main": "index.js",
+  "scripts": {
+    "test": "mocha firestore/test_security_rules.js --timeout 10000",
+    "test:security": "mocha firestore/test_security_rules.js --timeout 10000 --reporter spec",
+    "test:emulator": "firebase emulators:exec --only firestore \"npm run test:security\"",
+    "test:watch": "mocha firestore/test_security_rules.js --timeout 10000 --watch",
+    "emulator:start": "firebase emulators:start --only firestore",
+    "emulator:ui": "firebase emulators:start --only firestore,ui",
+    "deploy:rules": "firebase deploy --only firestore:rules",
+    "deploy:firestore": "firebase deploy --only firestore",
+    "validate:rules": "firebase firestore:rules validate firestore/firestore.rules",
+    "check:rules": "firebase firestore:rules get",
+    "setup:test": "npm install && firebase emulators:start --only firestore",
+    "verify:deployment": "npm run validate:rules && npm run test:emulator"
+  },
+  "devDependencies": {
+    "@firebase/rules-unit-testing": "^3.0.3",
+    "autoprefixer": "^10.4.23",
+    "chai": "^4.3.10",
+    "firebase-tools": "^13.0.0",
+    "mocha": "^10.2.0",
+    "postcss": "^8.5.6",
+    "tailwindcss": "^4.1.18"
+  },
+  "dependencies": {
+    "clsx": "^2.1.1",
+    "firebase-admin": "^12.0.0",
+    "firebase-functions": "^4.5.0",
+    "react-markdown": "^10.1.0",
+    "tailwind-merge": "^3.4.0",
+    "task-master-ai": "^0.21.0"
+  },
+  "engines": {
+    "node": ">=18.0.0"
+  },
+  "keywords": [
+    "firebase",
+    "firestore",
+    "security-rules",
+    "hipaa",
+    "healthcare",
+    "rbac"
+  ],
+  "author": "The Intaker Development Team",
+  "license": "UNLICENSED",
+  "private": true,
+  "repository": {
+    "type": "git",
+    "url": "private"
+  },
+  "mocha": {
+    "timeout": 10000,
+    "recursive": true,
+    "reporter": "spec"
+  }
+}

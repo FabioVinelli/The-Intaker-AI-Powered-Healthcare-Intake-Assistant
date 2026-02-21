@@ -1,0 +1,42 @@
+For **Mission 3 (The Deterministic Scoring Engine)**, you have three "Golden Source" files among your uploads. They map perfectly to the three Python modules you need to build.
+
+Here is exactly how to use each file to build the specific components of the engine:
+
+### 1. `Full_ASAM_Script_logic_scores_placement.txt`
+
+**Role:** **The Logic Blueprint (Algorithm)**
+**Use this to build:** `services/scoring-engine/loc_rules.py`
+
+* **Why it is useful:** This file contains actual **pseudocode** (e.g., `if overall_risk_score >= 3.5...`). It explicitly defines the "placement logic"—how to take a raw score and turn it into a "Level of Care" recommendation (e.g., "Level 3.7 Residential").
+* **Action for Agent:** "Translate the `level_of_care_determination` pseudocode in this text file directly into Python functions."
+
+### 2. `The Intaker - Comprehensive Documentation....docx`
+
+**Role:** **The Trigger Map (Scoring Rules)**
+**Use this to build:** `services/scoring-engine/scorer.py`
+
+* **Why it is useful:** This document links **Patient Questions** to **Dimensions**. It tells you *what* the system asks and *what* it listens for (e.g., "Are you experiencing tremors?").
+* **Action for Agent:** "Use the 'Follow-Up' and 'Dynamic Adjustments' sections to create the keyword triggers. If the user answers 'Yes' to the 'tremors' question in D1, that is a hard rule for `severity += 2`."
+
+### 3. `021122-asam-paper-criteria.pdf`
+
+**Role:** **The Schema Authority (Truth)**
+**Use this to build:** `services/scoring-engine/asam_schema.py`
+
+* **Why it is useful:** This is the official ASAM instrument. It is the only file that effectively "stops the drift" on Dimension names. It defines exactly what "Dimension 4" is vs "Dimension 6" officially.
+* **Action for Agent:** "Use this PDF to define the `Enum` classes for the 6 Dimensions and the 0-4 Severity Scale definitions. Do not invent new names; copy them exactly from this form to ensure compliance."
+
+**Summary for your Agent:**
+
+* **PDF** = The Dictionary (Definitions)
+* **DOCX** = The Ears (Listening Triggers)
+* **TXT** = The Brain (Decision Logic)
+
+----
+
+sure. use path to docs below:
+/Users/FV/Library/CloudStorage/GoogleDrive-contact@highlandhealthhub.com/Shared drives/The_Intaker_dev/ASAM-CRITERIA-SCRIPTS/The Intaker - Comprehensive Documentation for ASAM Intake Process and Scoring Logic.docx
+
+/Users/FV/Library/CloudStorage/GoogleDrive-contact@highlandhealthhub.com/Shared drives/The_Intaker_dev/ASAM-CRITERIA-SCRIPTS/021122-asam-paper-criteria.pdf
+
+/Users/FV/Library/CloudStorage/GoogleDrive-contact@highlandhealthhub.com/Shared drives/The_Intaker_dev/ASAM-CRITERIA-SCRIPTS/Full_ASAM_Script_logic_scores_placement.txt

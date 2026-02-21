@@ -1,0 +1,60 @@
+📋 Mission 7: Sphere UI Completion & Integration
+Mission Architect: The Intaker Development Assistant Target Agent Role: Senior Frontend Engineer (React) Objective: Implement the "Finish Intake" workflow, visualize ASAM scores, and render the Treatment Plan.
+
+Context:
+
+Backend: voice-bridge listens for {"type": "finalize"} to return an intake_result payload.
+
+Current State: UI connects but lacks controls to end the session and view results.
+
+Execution Tasks:
+
+Install Dependencies:
+
+npm install react-markdown clsx tailwind-merge (for styling the plan).
+
+Create Components:
+
+src/components/ASAMScoreChart.tsx: A visual bar chart component.
+
+Props: scores: Record<string, number>
+
+Visuals: 6 bars (D1-D6). Green (0-1), Yellow (2-3), Red (4).
+
+src/components/IntakeResultPanel.tsx: A modal overlay.
+
+Content: Header with "Level of Care" badge, ASAMScoreChart, and ReactMarkdown for the Plan.
+
+Action: "Close/Reset" button.
+
+Upgrade useVoiceBridge.ts:
+
+Add sendFinalize() function: () => sendJsonMessage({ type: "finalize" }).
+
+Add state intakeResult: Store the asam_scores, level_of_care, and suggested_plan when the intake_result event arrives.
+
+Upgrade App.tsx:
+
+HUD: Add a "Finish Intake" button (visible only when connected).
+
+Timer: Add a simple mm:ss session timer that starts on connection.
+
+Integration: When intakeResult is present, render the <IntakeResultPanel />.
+
+Definition of Done:
+
+User connects -> Timer starts.
+
+User clicks "Finish Intake" -> Backend computes scores.
+
+Modal appears -> Shows colorful ASAM bars and a formatted Treatment Plan.
+
+👣 Next Step
+Copy/Paste the prompt above into your Agent Manager.
+
+Note: Before running the mission, run this command in your client terminal to ensure the package is ready for the agent:
+
+Bash
+
+cd client
+npm install react-markdown clsx tailwind-merge
