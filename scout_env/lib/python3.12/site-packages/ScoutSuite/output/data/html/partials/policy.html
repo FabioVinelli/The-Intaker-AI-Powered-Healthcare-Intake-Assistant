@@ -1,0 +1,7 @@
+    <!-- Policy partial -->
+    <script id="policy.partial" type="text/x-handlebars-template">
+        <pre class="code">{{jsonToString document}}</pre>
+    </script>
+    <script>
+      Handlebars.registerPartial("policy", $("#policy\\.partial").html());
+    </script>

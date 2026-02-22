@@ -1,0 +1,5 @@
+[
+    "INFO:voice-bridge:Connection authenticated for user: test-user",
+    "INFO:voice-bridge:Connected to (Mock/Real) Gemini Live",
+    "INFO:voice-bridge:Session closed"
+]

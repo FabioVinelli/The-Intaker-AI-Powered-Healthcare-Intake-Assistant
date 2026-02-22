@@ -1,0 +1,34 @@
+rules_version = '2';
+service cloud.firestore {
+  match /databases/{database}/documents {
+    
+    // Intake Results Collection (Phase 1 Governance)
+    match /intake_results/{resultId} {
+      
+      // Allow AI (service account) or authenticated user to create the initial intake result
+      allow create: if request.auth != null;
+
+      // STRICT UPDATE POLICY (The "Clinical Gate"):
+      // 1. Current status must NOT be 'finalized' (prevents editing after sign-off).
+      // 2. User must have 'clinician' role.
+      // 3. The new status must be 'finalized' (closing the record).
+      // 4. Must include a valid clinician_signature_id.
+      allow update: if resource.data.status != 'finalized'
+                    && request.auth.token.role == 'clinician'
+                    && request.resource.data.status == 'finalized' 
+                    && request.resource.data.governance.clinician_signature_id != null;
+
+      // READ POLICY:
+      // - Clinicians and Admins can read pending intakes.
+      // - Patients (resource owner) can read ONLY if the intake is signed off by a clinician.
+      //   (Assumes patient_id exists on the document to identify owner)
+      allow read: if request.auth.token.role in ['clinician', 'admin']
+                  || (request.auth.uid == resource.data.patient_id && resource.data.governance.clinician_signature_id != null);
+    }
+
+    // Explicitly deny everything else by default until configured
+    match /{document=**} {
+      allow read, write: if false;
+    }
+  }
+}

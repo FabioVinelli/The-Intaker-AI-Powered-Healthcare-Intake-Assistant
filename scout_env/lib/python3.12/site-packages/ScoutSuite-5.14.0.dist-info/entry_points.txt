@@ -1,0 +1,2 @@
+[console_scripts]
+scout = ScoutSuite.__main__:run_from_cli

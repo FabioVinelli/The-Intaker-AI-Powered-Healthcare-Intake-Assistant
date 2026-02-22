@@ -1,0 +1,9 @@
+fastapi
+uvicorn
+websockets
+google-genai
+firebase-admin
+google-auth
+pyjwt
+python-dotenv
+requests

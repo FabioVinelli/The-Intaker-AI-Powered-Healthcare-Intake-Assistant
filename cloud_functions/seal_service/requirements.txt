@@ -1,0 +1,4 @@
+functions-framework==3.5.0
+google-cloud-firestore==2.14.0
+google-cloud-kms==2.20.0
+cloudevents==1.10.1
